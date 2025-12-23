@@ -58,6 +58,10 @@ jobs:
           Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path packages
           exit 0
 
+      - uses: alire-project/setup-alire@v5
+        with:
+          msys2: false
+
       - uses: Windows-on-ARM-Experiments/setup-msys2@main
         timeout-minutes: 10
         with:
@@ -69,6 +73,13 @@ jobs:
           update: true
           cache: true
 
+      - name: Mount /Users
+        run: |
+          mount -o binary,noacl,posix=0 C:/Users /Users
+          ls -l /Users/runneradmin/AppData/Local/alire/cache/toolchains/gnat_native_15.2.1_346e2e00/bin/
+          export PATH=/Users/runneradmin/AppData/Local/alire/cache/toolchains/gnat_native_15.2.1_346e2e00/bin:$PATH
+          gcc -v
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -79,6 +90,10 @@ jobs:
           ref: ${{ ((inputs.runner_arch == 'aarch64') && !inputs.build_with_native) && format('{0}-cross', inputs.packages_branch) || inputs.packages_branch }}
           sparse-checkout: ${{ inputs.package_name }}
           path: ${{ github.workspace }}/packages
+
+      - name: Enable Ada
+        working-directory:  ${{ github.workspace }}/packages
+        run: 'find . -name mingw-w64-gcc -exec sed -i.bak -e /enable_ada=/s/no/yes/ -e "/^package_gcc/aset -x" {}/PKGBUILD \; -print'
 
       - name: Setup packages repository
         if: inputs.runner_arch == 'aarch64'
